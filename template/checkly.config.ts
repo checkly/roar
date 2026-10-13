@@ -7,7 +7,7 @@ export default defineConfig({
   logicalId: 'roar-repro-ISSUE-123', // <- your issue id
   checks: {
     activated: true,
-    muted: false,
+    muted: true, // flip to false once the check is in place and you want it to alert
     frequency: 60,
     locations: ['eu-west-1'], // same region as the original event
     tags: ['roar', 'repro', '<issue-id>'],

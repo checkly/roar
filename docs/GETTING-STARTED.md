@@ -54,10 +54,13 @@ Three different kinds of "ids/parameters" are in play — easy to mix up:
    npx checkly env ls      # verify (secrets print empty)
    ```
    Never put credentials in the check code — it's committed and visible in the UI.
-3. **Runtime-provided variables** (Checkly sets these per run): `CHECKLY_CHECK_ID`,
-   `CHECK_RESULT_ID` (unique per run — we use it as the run id in every header),
-   `CHECKLY_REGION`. `repro-context.ts` reads all three and falls back to `local` /
-   a random UUID so the same specs also run under plain `npx playwright test`.
+3. **Runtime-provided variables** (Checkly sets these per run): `CHECK_RESULT_ID` is
+   the reliable per-run id (we use it as the run id in every header). Others —
+   `CHECK_RUN_ID`, `CHECK_NAME`, `REGION`, and a runtime `CHECKLY_TRACEPARENT` — vary
+   by run type (ad-hoc test session vs scheduled run), so `repro-context.ts` falls
+   back to `local` / a random UUID and the same specs also run under plain
+   `npx playwright test`. (We mint our own trace id rather than reusing the runtime's
+   so the per-run id in our output lines is guaranteed to match what the target saw.)
 
 Check-level parameters worth setting deliberately (see
 [`repro.check.ts`](../template/__checks__/repro.check.ts)):
@@ -68,8 +71,12 @@ Check-level parameters worth setting deliberately (see
 - `frequency: Frequency.EVERY_1H`, `locations: ['eu-west-1']` — run hourly from the
   same region as the original incident.
 - `activated: true, muted: true` while you iterate (runs, but never alerts); flip
-  `muted: false` once you want it to page. `tags` carry the issue id so the UI maps
-  back to the error tracker.
+  `muted: false` once you want it to page — the template ships muted. `tags` carry the
+  issue id so the UI maps back to the error tracker.
+- **Account env vars are account-wide**, not per-project: prefix yours per incident
+  (or use a dedicated account) so `REPRO_API_KEY` doesn't collide with a colleague's.
+  Also note `env add <key> <value>` puts the secret in your shell history — mint
+  throwaway keys and delete them after.
 
 ### Running and reading results
 
@@ -83,13 +90,17 @@ What you get back, and where we read each piece:
 - **stdout**: a live `✔/✖` line per check, plus everything your spec `console.log`s —
   this is why the template prints `ROAR_REPRO_CONTEXT` / `ROAR_REPRO_ROUND` /
   `ROAR_REPRO_RESULT` as single-line JSON. An agent (or a script) parses the verdict
-  and the per-request ids straight out of the CLI output:
+  and the per-request ids out of the CLI output:
   `ROAR_REPRO_RESULT {"verdict":"REPRODUCED","put500s":[{"round":0,"requestId":"…"}…]}`.
+  Parsing caveats: pass `--verbose` or **passing** checks print no logs at all; the
+  output contains ANSI color codes (strip them); most marker lines are prefixed with
+  `HH:MM:SS INFO`, so match the `ROAR_REPRO_*` marker mid-line, not line-start.
 - **exit code**: non-zero if any check failed — usable directly as a CI gate
   (`checkly test` in a PR workflow is exactly that).
 - **`--record`**: persists the run as a *test session* and prints web links — a
-  per-check "View result" link (full Playwright trace, every request/response) and a
-  session summary link. Put these links in the PR.
+  "View result" link per **failing** check (full Playwright trace, every
+  request/response; passing checks only appear in the session summary) and a session
+  summary link. Put these links in the PR.
 
 `checkly test` is how we proved REPRODUCED (red race + green control) **before**
 deploying anything.
@@ -107,13 +118,18 @@ auth from your login session or `CHECKLY_API_KEY`/`CHECKLY_ACCOUNT_ID`, no curl/
 needed):
 
 ```sh
-npx checkly api /v1/checks --jq '.[] | select(.tags | index("roar")) | {id, name, activated, muted, retryStrategy}'
+# find your group (the groups list is short; /v1/checks paginates at 10 by default,
+# so tag-filtering the flat checks list silently misses checks in a real account)
+npx checkly api /v1/check-groups --jq '.[] | select(.tags | index("roar")) | {id, name}'
+# then list exactly its checks
+npx checkly api /v1/check-groups/<group id>/checks --jq '.[] | {id, name, muted, retryStrategy, doubleCheck}'
 ```
 
-It works for any endpoint and method (`-X POST -F name=… -F activated:=true`,
-`--input body.json`); the OpenAPI spec is at https://api.checklyhq.com/openapi.json.
-(That's also how we confirmed `retryStrategy` / `doubleCheck` actually landed as
-intended — trust but verify.)
+Expected output for `RetryStrategyBuilder.noRetries()`: `"retryStrategy": null` plus
+`"doubleCheck": false` — null here means "no retries", not "unset". `--jq` needs a
+local `jq` install (drop the flag to get raw JSON). `checkly api` works for any
+endpoint and method (`-X POST -F name=… -F activated:=true`, `--input body.json`);
+the OpenAPI spec is at https://api.checklyhq.com/openapi.json.
 
 To target a second environment (your staging gate), nothing in the project changes —
 only env vars for the CLI itself:
@@ -126,6 +142,22 @@ CHECKLY_API_KEY=<staging key> CHECKLY_ACCOUNT_ID=<staging account> npx checkly d
 
 Same code, same logical IDs, different account: you now have the identical repro
 running pre-merge-red / post-merge-green against staging.
+
+### Tearing down
+
+When an incident is closed and you don't want the regression monitor anymore:
+
+```sh
+npx checkly destroy --force          # deletes everything this project deployed (by logicalId)
+npx checkly env rm REPRO_API_KEY --force
+npx checkly env rm REPRO_TARGET_API --force
+npx checkly env rm REPRO_ISSUE_ID --force
+# verify nothing tagged yours remains
+npx checkly api /v1/check-groups --jq '.[] | select(.tags | index("roar"))'
+```
+
+`destroy` removes only resources belonging to this project's `logicalId` — other
+projects in the account are untouched.
 
 ### Gotchas we hit
 

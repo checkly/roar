@@ -21,9 +21,12 @@ export const REPRO_ID = process.env.REPRO_ISSUE_ID || 'roar-repro'
 export const API_ROOT = (process.env.REPRO_TARGET_API || '').replace(/\/$/, '')
 export const API_KEY = process.env.REPRO_API_KEY || ''
 
-export const CHECK_ID = process.env.CHECKLY_CHECK_ID || 'local'
-export const CHECK_RESULT_ID = process.env.CHECK_RESULT_ID || ''
-export const LOCATION = process.env.CHECKLY_REGION || 'local'
+// Which runtime variables Checkly sets varies by run type (ad-hoc test session vs
+// scheduled run). CHECK_RESULT_ID is the reliable per-run id; the others may be unset,
+// so everything falls back and the specs also run under plain `npx playwright test`.
+export const CHECK_ID = process.env.CHECKLY_CHECK_ID || process.env.CHECK_NAME || 'local'
+export const CHECK_RESULT_ID = process.env.CHECK_RESULT_ID || process.env.CHECK_RUN_ID || ''
+export const LOCATION = process.env.CHECKLY_REGION || process.env.REGION || 'local'
 export const RUN_ID = CHECK_RESULT_ID || randomUUID()
 export const TRACE_ID = randomBytes(16).toString('hex')
 
