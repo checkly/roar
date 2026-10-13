@@ -62,6 +62,7 @@ session-authenticated internal route the alert came from).
 
 | path | what |
 | --- | --- |
+| [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md) | setup from zero: the tool stack we used (Checkly CLI, Sentry MCP, Grafana/Loki) and the first loop by hand |
 | [`docs/CASE-STUDY.md`](docs/CASE-STUDY.md) | the worked example: a race-condition TypeError, from Sentry event to verified fix |
 | [`docs/LESSONS.md`](docs/LESSONS.md) | everything that generalizes — including the failures and gotchas |
 | [`template/`](template/) | a deployable Checkly CLI project implementing the pattern (race + control checks, correlation identity, machine-readable output) |
