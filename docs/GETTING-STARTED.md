@@ -153,9 +153,14 @@ If your org separates Checkly accounts per environment, the CLI retargets with e
 vars instead of a login: `CHECKLY_API_KEY=… CHECKLY_ACCOUNT_ID=… npx checkly deploy`
 deploys the identical project (same code, same logical IDs) into that other account.
 
-### Tearing down
+### Tearing down (optional)
 
-When an incident is closed and you don't want the regression monitor anymore:
+There's a good case for **keeping the checks forever**: once the fix ships they're a
+green regression monitor for a failure mode you know is reachable, they're muted or
+cheap to run hourly, and the group name maps straight back to the incident. Keeping
+them is the default we'd recommend — just unmute and wire an alert channel once green.
+
+If you do want them gone (incident closed, probe superseded, account hygiene):
 
 ```sh
 npx checkly destroy --force          # deletes everything this project deployed (by logicalId)
