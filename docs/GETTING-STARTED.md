@@ -102,15 +102,16 @@ npx checkly deploy            # idempotent; add --force to skip the confirmation
 
 This creates the group + checks as standing monitors that run on their schedule.
 Scheduled-run results arrive in the dashboard and via your alert channels; for
-scripted verification we read the public API directly:
+scripted verification use the CLI's built-in API pass-through (`checkly api` — handles
+auth from your login session or `CHECKLY_API_KEY`/`CHECKLY_ACCOUNT_ID`, no curl/headers
+needed):
 
 ```sh
-curl -s -H "Authorization: Bearer $CHECKLY_API_KEY" \
-     -H "x-checkly-account: $CHECKLY_ACCOUNT_ID" \
-     https://api.checklyhq.com/v1/checks | \
-  jq '.[] | select(.tags | index("roar")) | {id, name, activated, muted, retryStrategy}'
+npx checkly api /v1/checks --jq '.[] | select(.tags | index("roar")) | {id, name, activated, muted, retryStrategy}'
 ```
 
+It works for any endpoint and method (`-X POST -F name=… -F activated:=true`,
+`--input body.json`); the OpenAPI spec is at https://api.checklyhq.com/openapi.json.
 (That's also how we confirmed `retryStrategy` / `doubleCheck` actually landed as
 intended — trust but verify.)
 
