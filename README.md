@@ -10,6 +10,10 @@ Sentry event to a merged fix verified on staging in the same afternoon — and w
 down everything that worked, everything that didn't, and the code. This repo is the
 shareable version.
 
+**Setting this up yourself? Start with [Getting started](docs/GETTING-STARTED.md)** —
+the tool stack (Checkly CLI, Sentry MCP, logs), check deployment and results, and the
+first loop by hand.
+
 ```
 DETECT      an alert fires (Sentry issue, log alert, metric anomaly)
    ↓
@@ -68,6 +72,8 @@ session-authenticated internal route the alert came from).
 | [`template/`](template/) | a deployable Checkly CLI project implementing the pattern (race + control checks, correlation identity, machine-readable output) |
 
 ## Quickstart (Checkly)
+
+(Full walkthrough: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).)
 
 ```sh
 cd template
