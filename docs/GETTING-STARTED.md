@@ -131,17 +131,27 @@ local `jq` install (drop the flag to get raw JSON). `checkly api` works for any
 endpoint and method (`-X POST -F name=… -F activated:=true`, `--input body.json`);
 the OpenAPI spec is at https://api.checklyhq.com/openapi.json.
 
-To target a second environment (your staging gate), nothing in the project changes —
-only env vars for the CLI itself:
+### The staging gate
+
+The gate is the same repro pointed at **your staging environment of the target
+service** — if your main branch auto-deploys to staging, the check is red before the
+fix merges and green after, so the loop closes without a production release. The
+simplest setup needs nothing new: copy the project to a second directory (or just a
+second `logicalId`, e.g. `roar-repro-ISSUE-123-staging`), set its target env var to
+your staging API, and test/deploy as before:
 
 ```sh
-CHECKLY_API_KEY=<staging key> CHECKLY_ACCOUNT_ID=<staging account> npx checkly env add REPRO_TARGET_API https://api-staging.yourservice.example
-CHECKLY_API_KEY=<staging key> CHECKLY_ACCOUNT_ID=<staging account> npx checkly test --record
-CHECKLY_API_KEY=<staging key> CHECKLY_ACCOUNT_ID=<staging account> npx checkly deploy
+npx checkly env add REPRO_TARGET_API_STAGING https://api-staging.yourservice.example
+# (and read that var instead of REPRO_TARGET_API in repro-context.ts for the staging copy)
+npx checkly test --record
+npx checkly deploy
 ```
 
-Same code, same logical IDs, different account: you now have the identical repro
-running pre-merge-red / post-merge-green against staging.
+Both copies live in the same Checkly account; only the target URL differs.
+
+If your org separates Checkly accounts per environment, the CLI retargets with env
+vars instead of a login: `CHECKLY_API_KEY=… CHECKLY_ACCOUNT_ID=… npx checkly deploy`
+deploys the identical project (same code, same logical IDs) into that other account.
 
 ### Tearing down
 
