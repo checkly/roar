@@ -1,0 +1,14 @@
+{
+  "name": "roar-repro-template",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ROAR template: a Checkly project that reproduces a production bug on demand and gates its fix",
+  "scripts": {
+    "test": "checkly test --record --verbose",
+    "deploy": "checkly deploy"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "checkly": "^8.22.0"
+  }
+}
